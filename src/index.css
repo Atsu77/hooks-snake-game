@@ -37,3 +37,11 @@ body {
   display: flex;
   flex-wrap: wrap; /* b. */
 }
+
+.snake {
+  background: white;
+}
+
+.food {
+  background: pink;
+}
