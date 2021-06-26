@@ -4,7 +4,7 @@ import Navigation from "./components/Navigation";
 import Field from "./components/Field";
 import Button from "./components/Button";
 import ManipulationPanel from "./components/ManipulationPanel";
-import { initFields } from "./utils";
+import { initFields, getFoodPosition } from "./utils";
 
 const initialPosition = { x: 17, y: 17 };
 const initialValues = initFields(35, initialPosition);
@@ -66,13 +66,13 @@ const isCollision = (fieldSize, position) => {
 
 function App() {
   const [fields, setField] = useState(initialValues);
-  const [position, setPosition] = useState();
+  const [body, setBody] = useState([]);
   const [direction, setDirection] = useState(Direction.up);
   const [status, setStatus] = useState(GameStatus.init);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    setPosition(initialPosition);
+    setBody([initialPosition]);
     timer = setInterval(() => {
       setTick((tick) => tick + 1);
     }, defaultIntervel);
@@ -80,7 +80,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!position || status !== GameStatus.playing) {
+    if (body.length === 0 || status !== GameStatus.playing) {
       return;
     }
     const canContinue = handleMoving();
@@ -96,35 +96,38 @@ function App() {
       setTick((tick) => tick + 1);
     }, defaultIntervel);
     setStatus(GameStatus.init);
-    setPosition(initialPosition);
+    setBody([initialPosition]);
     setDirection(Direction.up);
     setField(initFields(fields.length, initialPosition));
   };
 
-  const onChangeDirection = useCallback((newDirection) => {
-    if (status !== GameStatus.playing) {
-      return direction;
-    }
-    if (OppositeDirection[direction] === newDirection) {
-      return;
-    }
-    setDirection(newDirection);
-  },[direction, status]);
+  const onChangeDirection = useCallback(
+    (newDirection) => {
+      if (status !== GameStatus.playing) {
+        return direction;
+      }
+      if (OppositeDirection[direction] === newDirection) {
+        return;
+      }
+      setDirection(newDirection);
+    },
+    [direction, status]
+  );
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       const newDirection = DirectionKeyCodeMap[e.keyCode];
-      if (!newDirection){
-        return
+      if (!newDirection) {
+        return;
       }
       onChangeDirection(newDirection);
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  },[onChangeDirection])
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onChangeDirection]);
 
   const handleMoving = () => {
-    const { x, y } = position;
+    const { x, y } = body[0];
     const delta = Delta[direction];
     const newPosition = {
       x: x + delta.x,
@@ -134,9 +137,18 @@ function App() {
       unsubscribe();
       return false;
     }
-    fields[y][x] = "";
+    const newBody = [...body];
+    if (fields[newPosition.y][newPosition.x] !== "food") {
+      const removingTrack = newBody.pop();
+      fields[removingTrack.y][removingTrack.x] = "";
+    } else {
+      const food = getFoodPosition(fields.length, [...newBody, newPosition]);
+      fields[food.y][food.x] = "food";
+    }
     fields[newPosition.y][newPosition.x] = "snake";
-    setPosition(newPosition);
+    newBody.unshift(newPosition);
+
+    setBody(newBody);
     setField(fields);
     return true;
   };
